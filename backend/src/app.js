@@ -10,8 +10,7 @@ const errorHandler = require('./middleware/errorHandler');
 const notFoundHandler = require('./middleware/notFound');
 
 // Import routes
-// const authRoutes = require('./routes/auth');
-// const userRoutes = require('./routes/users');
+const userRoutes = require('./routes/user');
 
 const app = express();
 
@@ -85,7 +84,6 @@ app.use('api/v1', (req, res, next) => {
 });
 
 // Routes
-
 // Welcome Route
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -96,6 +94,8 @@ app.get('/', (req, res) => {
     health: '/health',
   });
 });
+
+app.use('/api/v1/users', userRoutes);
 
 // Handle 404 errors
 app.use(notFoundHandler);

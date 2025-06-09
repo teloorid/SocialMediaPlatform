@@ -2,16 +2,26 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+    // Connection options for better performance and reliability
+    const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    });
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      // bufferMaxEntries: 0,
+      bufferCommands: false,
+    };
+
+    const conn = await mongoose.connect(process.env.MONGODB_URI, options);
 
     console.log(`
         MongoDB Connected successfully.
         Host: ${conn.connection.host}
         Database: ${conn.connection.name}
         Connection State: ${conn.connection.readyState === 1 ? 'Connected' : 'Disconnected'}
+        Environment: ${process.env.NODE_ENV}
+        Connected at: ${new Date().toLocaleString()}
         `);
 
     // Handle connection events
@@ -19,8 +29,12 @@ const connectDB = async () => {
       console.error('MongoDB connection error:', err);
     });
 
-    mongoose.connection.on('disconnected', (err) => {
+    mongoose.connection.on('disconnected', () => {
       console.log('MongoDB disconnected');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('MongoDB reconnected');
     });
 
     // If the Node process ends, close the Mongoose connection
@@ -31,6 +45,7 @@ const connectDB = async () => {
     });
   } catch (error) {
     console.error('Database connection failed:', error.message);
+    console.log('Check your connection string and network connectivity');
     process.exit(1);
   }
 };
