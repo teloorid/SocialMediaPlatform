@@ -7,7 +7,7 @@ const sampleUsers = [
   {
     username: 'johndoe',
     email: 'john@example.com',
-    password: 'password123',
+    password: 'Password@123',
     profile: {
       firstName: 'John',
       lastName: 'Doe',
@@ -23,7 +23,7 @@ const sampleUsers = [
   {
     username: 'janedoe',
     email: 'jane@example.com',
-    password: 'password123',
+    password: 'Password@123',
     profile: {
       firstName: 'Jane',
       lastName: 'Doe',
@@ -39,7 +39,7 @@ const sampleUsers = [
   {
     username: 'techguru',
     email: 'guru@example.com',
-    password: 'password123',
+    password: 'Password@123',
     profile: {
       firstName: 'Alex',
       lastName: 'Smith',
@@ -53,7 +53,7 @@ const sampleUsers = [
   {
     username: 'creativemind',
     email: 'creative@example.com',
-    password: 'password123',
+    password: 'Password@123',
     profile: {
       firstName: 'Sarah',
       lastName: 'Johnson',
@@ -65,7 +65,7 @@ const sampleUsers = [
   {
     username: 'devmaster',
     email: 'master@example.com',
-    password: 'password123',
+    password: 'Password@123',
     profile: {
       firstName: 'Mike',
       lastName: 'Wilson',
@@ -81,10 +81,7 @@ const sampleUsers = [
 // Connect to database
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected for seeding');
   } catch (error) {
     console.error('MongoDB connection error:', error.message);
@@ -95,7 +92,7 @@ const connectDB = async () => {
 // Seed Users
 const seedUsers = async () => {
   try {
-    console.log('Starting databse seeding');
+    console.log('Starting database seeding');
 
     // Clear existing users (only in development
     if (process.env.NODE_ENV === 'development') {

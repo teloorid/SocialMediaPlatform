@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema(
   {
@@ -36,12 +37,54 @@ const userSchema = new mongoose.Schema(
       select: false,
       validate: {
         validator: function (password) {
-          // Password must contain at least one letter and one number
-          return /^(?=.*[A-Za-z])(?=.*\d)/.test(password);
+          // The password must contain at least one letter and one number
+          return /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]/.test(
+            password
+          );
         },
-        message: 'Password must contain at least one letter and one number',
+        message:
+          'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
       },
     },
+
+    // Authentication fields
+    role: {
+      type: String,
+      enum: ['user', 'admin', 'moderator'],
+      default: 'user',
+    },
+
+    // Account verification
+    emailVerificationToken: String,
+    emailVerificationExpire: Date,
+
+    // Password reset
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
+
+    // Security tracking
+    loginAttempts: {
+      type: Number,
+      default: 0,
+    },
+
+    lockUntil: Date,
+
+    // Session Management
+    refreshTokens: [
+      {
+        token: String,
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        expiresAt: {
+          type: Date,
+          default: () => new Date(Date.now() + 7 * 24 * 60 * 1000),
+        },
+      },
+    ],
+
     profile: {
       firstName: {
         type: String,
@@ -118,6 +161,10 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: true,
       },
+      twoFactorEnabled: {
+        type: Boolean,
+        default: false,
+      },
     },
     status: {
       isActive: {
@@ -138,6 +185,12 @@ const userSchema = new mongoose.Schema(
       lastSeen: {
         type: Date,
         default: Date.now,
+      },
+      ipAddress: {
+        type: String,
+      },
+      userAgent: {
+        type: String,
       },
     },
 
@@ -173,6 +226,13 @@ const userSchema = new mongoose.Schema(
       virtuals: true,
       transform: function (doc, ret) {
         delete ret.password;
+        delete ret.resetPasswordToken;
+        delete ret.resetPasswordExpire;
+        delete ret.emailVerificationToken;
+        delete ret.emailVerificationExpire;
+        delete ret.refreshTokens;
+        delete ret.loginAttempts;
+        delete ret.lockUntil;
         return ret;
       },
     },
@@ -180,6 +240,13 @@ const userSchema = new mongoose.Schema(
       virtuals: true,
       transform: function (doc, ret) {
         delete ret.password;
+        delete ret.resetPasswordToken;
+        delete ret.resetPasswordExpire;
+        delete ret.emailVerificationToken;
+        delete ret.emailVerificationExpire;
+        delete ret.refreshTokens;
+        delete ret.loginAttempts;
+        delete ret.lockUntil;
         return ret;
       },
     },
@@ -209,9 +276,17 @@ userSchema.virtual('profile.age').get(function () {
   return age;
 });
 
+// Virtual for account lock status
+userSchema.virtual('isLocked').get(function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+});
+
 // Indexes for better performance
 userSchema.index({ username: 1, email: 1 });
 userSchema.index({ 'status.isActive': 1 });
+userSchema.index({ resetPasswordToken: 1 });
+userSchema.index({ emailVerificationToken: 1 });
+userSchema.index({ 'refreshTokens.token': 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ 'status.lastLogin': -1 });
 
@@ -240,19 +315,164 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Instance method to check password
+// Instance methods
+// Check password
 userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  try {
+    return await bcrypt.compare(enteredPassword, this.password);
+  } catch (error) {
+    console.error('Password check failed: ', error.message);
+  }
 };
 
-// Instance method to generate JWT token
+// Generate JWT token
 userSchema.methods.getSignedJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
+  const payload = {
+    id: this._id,
+    email: this.email,
+    username: this.username,
+    role: this.role,
+  };
+
+  return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE,
+    issuer: process.env.JWT_ISSUER,
+    audience: process.env.JWT_AUDIENCE,
   });
 };
 
-// Static method to find users by search term
+// Generate token
+userSchema.methods.generateRefreshToken = function () {
+  const refreshToken = crypto.randomBytes(40).toString('hex');
+
+  this.refreshTokens.push({
+    token: refreshToken,
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  });
+
+  return refreshToken;
+};
+
+// Remove refresh token
+userSchema.methods.removeRefreshToken = function (tokenToRemove) {
+  this.refreshTokens = this.refreshTokens.filter(
+    (tokenObj) => tokenObj.token !== tokenToRemove
+  );
+};
+
+// Clean expired refresh tokens
+userSchema.methods.cleanExpiredTokens = function () {
+  const now = new Date();
+  this.refreshTokens = this.refreshTokens.filter(
+    (tokenObj) => tokenObj.expiresAt > now
+  );
+};
+
+// Generate email verification tokens
+userSchema.methods.getEmailVerificationToken = function () {
+  const verificationToken = crypto.randomBytes(20).toString('hex');
+
+  this.emailVerificationToken = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+
+  this.emailVerificationExpire =
+    Date.now() +
+    parseInt(process.env.EMAIL_VERIFICATION_EXPIRE) * 60 * 60 * 1000;
+
+  return verificationToken;
+};
+
+// Generate password reset token
+userSchema.methods.getResetPasswordToken = function () {
+  const resetToken = crypto.randomBytes(20).toString('hex');
+
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  this.resetPasswordExpire =
+    Date.now() + parseInt(process.env.RESET_PASSWORD_EXPIRE) * 60 * 1000;
+
+  return resetToken;
+};
+
+// Handle failed login attempts
+userSchema.methods.incLoginAttempts = function () {
+  // If we have a previous lock that has expired, restart at 1
+  if (this.lockUntil && this.lockUntil < Date.now()) {
+    return this.updateOne({
+      $unset: {
+        lockUntil: 1,
+      },
+      $set: {
+        loginAttempts: 1,
+      },
+    });
+  }
+
+  const updates = { $inc: { loginAttempts: 1 } };
+
+  // Lock account after max failed attempts
+  if (this.loginAttempts + 1 >= parseInt(process.env.MAX_LOGIN_ATTEMPTS)) {
+    updates.$set = {
+      lockUntil: Date.now() + parseInt(process.env.LOCKOUT_TIME) * 60 * 1000,
+    };
+  }
+
+  return this.updateOne(updates);
+};
+
+// Reset login attempts
+userSchema.methods.resetLoginAttempts = function () {
+  return this.updateOne({
+    $unset: {
+      loginAttempts: 1,
+      lockUntil: 1,
+    },
+    $set: {
+      lastLogin: new Date(),
+    },
+  });
+};
+
+//Static methods
+userSchema.statics.getAuthenticatedUser = async function (username, password) {
+  const user = await this.findOne({
+    $or: [{ email: username }, { username: username }],
+    'status.isActive': true,
+  }).select('+password');
+
+  if (!user) {
+    return { user: null, reason: 'USER_NOT_FOUND' };
+  }
+
+  // Check if the account is locked
+  if (user.isLocked) {
+    await user.incLoginAttempts();
+    return { user: null, reason: 'ACCOUNT_LOCKED' };
+  }
+
+  // Check password
+  const isMatch = await user.matchPassword(password);
+
+  if (isMatch) {
+    // Reset login attempts on successful login
+    if (user.loginAttempts && !user.isLocked) {
+      await user.resetLoginAttempts();
+    }
+    return { user, reason: null };
+  }
+
+  // Password incorrect, increment attempts
+  await user.incLoginAttempts();
+  return { user: null, reason: 'INVALID_PASSWORD' };
+};
+
+// Find users by search term
 userSchema.statics.searchUsers = function (searchTerm, limit = 10) {
   return this.find({
     $or: [
@@ -267,7 +487,7 @@ userSchema.statics.searchUsers = function (searchTerm, limit = 10) {
     .limit(limit);
 };
 
-// Static method to get user statistics
+// Get user statistics
 userSchema.statics.getUserStats = async function () {
   const stats = await this.aggregate([
     {

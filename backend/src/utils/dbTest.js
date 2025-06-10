@@ -10,7 +10,7 @@ const testUserOperations = async () => {
     const newUser = new User({
       username: 'testuser',
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password@123',
       profile: {
         firstName: 'Test',
         lastName: 'User',
@@ -47,7 +47,7 @@ const testUserOperations = async () => {
 
     // Test 4: Test password hashing
     console.log('Testing Password Hashing');
-    const isPasswordValid = await savedUser.matchPassword('password123');
+    const isPasswordValid = await savedUser.matchPassword('Password@123');
     const isWrongPassword = await savedUser.matchPassword('wrongpassword');
     console.log(`Correct password check: ${isPasswordValid}`);
     console.log(`Wrong password check: ${isWrongPassword}\n`);
