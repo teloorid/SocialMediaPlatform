@@ -7,26 +7,37 @@ const User = require('../models/User');
 exports.protect = asyncHandler(async (req, res, next) => {
   let token;
 
+  // Add debugging
+  console.log('=== PROTECT MIDDLEWARE DEBUG ===');
+  console.log('Headers:', req.headers.authorization);
+  console.log('Cookies:', req.cookies);
+
   // Check for token in headers
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer ')
   ) {
     token = req.headers.authorization.split(' ')[1];
+    console.log('Token from headers:', token);
   }
 
   // Check for token in cookies
   else if (req.cookies.accessToken) {
     token = req.cookies.accessToken;
+    console.log('Token from cookies:', token);
   }
 
+  console.log('Final token:', token);
+
   if (!token) {
+    console.log('No token found - should return 401');
     return next(new ErrorResponse('Access denied. No token provided', 401));
   }
 
   try {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token decoded successfully:', decoded.id);
 
     // Get user from database
     const user = await User.findById(decoded.id);
@@ -37,7 +48,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
     // Check if user is active
     if (!user.status.isActive) {
-      return next(new ErrorResponse('User account is deacrivated', 401));
+      return next(new ErrorResponse('User account is deactivated', 401));
     }
 
     // Add user to request object
@@ -129,6 +140,11 @@ exports.rateLimitByUser = (windowMs = 15 * 60 * 1000, max = 100) => {
   const attempts = new Map();
 
   return (req, res, next) => {
+    // Skip rate limiting in development/test environment
+    if (process.env.NODE_ENV !== 'production') {
+      return next();
+    }
+
     const userId = req.user ? req.user.id : req.ip;
     const now = Date.now();
 

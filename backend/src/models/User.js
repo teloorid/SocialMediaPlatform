@@ -362,11 +362,27 @@ userSchema.methods.removeRefreshToken = function (tokenToRemove) {
 };
 
 // Clean expired refresh tokens
-userSchema.methods.cleanExpiredTokens = function () {
-  const now = new Date();
-  this.refreshTokens = this.refreshTokens.filter(
-    (tokenObj) => tokenObj.expiresAt > now
-  );
+userSchema.methods.cleanExpiredTokens = function() {
+  try {
+    // Ensure refreshTokens exists and is an array
+    if (!this.refreshTokens || !Array.isArray(this.refreshTokens)) {
+      this.refreshTokens = [];
+      return;
+    }
+
+    const now = new Date();
+    this.refreshTokens = this.refreshTokens.filter((tokenObj) => {
+      try {
+        return tokenObj && tokenObj.expiresAt && tokenObj.expiresAt > now;
+      } catch (err) {
+        console.warn('Invalid token object:', tokenObj);
+        return false; // Remove invalid tokens
+      }
+    });
+  } catch (error) {
+    console.error('Error cleaning expired tokens:', error);
+    this.refreshTokens = []; // Reset to empty array on error
+  }
 };
 
 // Generate email verification tokens
@@ -440,11 +456,14 @@ userSchema.methods.resetLoginAttempts = function () {
 };
 
 //Static methods
-userSchema.statics.getAuthenticatedUser = async function (username, password) {
+userSchema.statics.getAuthenticatedUser = async function (
+  identifier,
+  password
+) {
+  // Look for user by username or email
   const user = await this.findOne({
-    $or: [{ email: username }, { username: username }],
-    'status.isActive': true,
-  }).select('+password');
+    $or: [{ username: identifier }, { email: identifier }],
+  }).select('+password + loginAttempts +lockUntil');
 
   if (!user) {
     return { user: null, reason: 'USER_NOT_FOUND' };
@@ -456,20 +475,21 @@ userSchema.statics.getAuthenticatedUser = async function (username, password) {
     return { user: null, reason: 'ACCOUNT_LOCKED' };
   }
 
-  // Check password
   const isMatch = await user.matchPassword(password);
 
   if (isMatch) {
     // Reset login attempts on successful login
-    if (user.loginAttempts && !user.isLocked) {
-      await user.resetLoginAttempts();
+    if (user.loginAttempts > 0) {
+      await user.updateOne({
+        $unset: { loginAttempts: 1, lockUntil: 1 },
+      });
     }
     return { user, reason: null };
+  } else {
+    // Increment login attempts
+    await user.incLoginAttempts();
+    return { user: null, reason: 'INVALID_PASSWORD' };
   }
-
-  // Password incorrect, increment attempts
-  await user.incLoginAttempts();
-  return { user: null, reason: 'INVALID_PASSWORD' };
 };
 
 // Find users by search term

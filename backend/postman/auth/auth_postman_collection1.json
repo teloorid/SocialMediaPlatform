@@ -30,7 +30,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"johndoe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+              "raw": "{\n  \"username\": \"johndoe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\",\n  \"confirmPassword\": \"Password@123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/register",
@@ -64,7 +64,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"johndoe\",\n  \"password\": \"Password123!\",\n  \"rememberMe\": true\n}"
+              "raw": "{\n  \"username\": \"johndoe\",\n  \"password\": \"Password@123\",\n  \"rememberMe\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
@@ -144,7 +144,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"currentPassword\": \"Password123!\",\n  \"newPassword\": \"NewPassword123!\",\n  \"confirmPassword\": \"NewPassword123!\"\n}"
+              "raw": "{\n  \"currentPassword\": \"Password@123\",\n  \"newPassword\": \"NewPassword123!\",\n  \"confirmPassword\": \"NewPassword123!\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/password",
@@ -182,14 +182,35 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
             "url": {
               "raw": "{{baseUrl}}/auth/logout",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "logout"]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.unset('accessToken');",
+                  "    pm.environment.unset('refreshToken');",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

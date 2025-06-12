@@ -1,5 +1,5 @@
 const { body, param } = require('express-validator');
-const User = require('../models/User');
+const User = require('../../models/User');
 
 // Registration validation rules
 exports.validateRegister = [
@@ -46,13 +46,15 @@ exports.validateRegister = [
     .withMessage(
       'Password must contain at least one uppercase letter, one lower case letter and one number'
     ),
-  body('confirmPassword').custom((value, { req }) => {
-    if (value !== req.body.password) {
-      throw new Error('Passwords do not match');
-    }
-
-    return true;
-  }),
+  body('confirmPassword')
+    .notEmpty()
+    .withMessage('Password confirmation is required')
+    .custom((value, { req }) => {
+      if (value !== req.body.password) {
+        throw new Error('Passwords do not match');
+      }
+      return true;
+    }),
   body('firstName')
     .trim()
     .optional()
@@ -68,7 +70,10 @@ exports.validateRegister = [
 
 // Login validation rules
 exports.validateLogin = [
-  body('username').trim().notEmpty().withMessage('Email is required'),
+  body('username')
+    .trim()
+    .notEmpty()
+    .withMessage('Username or email is required'),
 
   body('password').notEmpty().withMessage('Password is required'),
 

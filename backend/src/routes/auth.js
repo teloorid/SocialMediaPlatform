@@ -22,7 +22,7 @@ const {
   validateEmail,
   validatePasswordReset,
   validateToken,
-} = require('../middleware/validation');
+} = require('../middleware/validation/authValidation');
 
 const router = express.Router();
 

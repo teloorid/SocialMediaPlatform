@@ -15,6 +15,7 @@ const notFound = require('./middleware/notFound');
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const postRoutes = require('./routes/post');
 
 const app = express();
 
@@ -108,7 +109,10 @@ const limiter = rateLimit({
     error: 'Too many requests from this IP, please try again later',
   },
 });
-app.use(limiter);
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(limiter);
+}
 
 // CORS Configuration
 app.use(
@@ -158,7 +162,7 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('api/v1', (req, res, next) => {
+app.use('/api/v1', (req, res, next) => {
   res.header('API-Version', '1.0.0');
   next();
 });
@@ -178,6 +182,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/posts', postRoutes);
 
 // Error handling middleware
 // Handle 404 errors
