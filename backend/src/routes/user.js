@@ -10,12 +10,12 @@ const {
 
 const router = express.Router();
 
-// Statistics route (must be before /:id route)
-router.route('/stats').get(getUserStats);
-
-// Main user routes
-router.route('/').get(getUsers).post(createUser);
-
-router.route('/:id').get(getUser).put(updateUser).delete(deleteUser);
+// Public routes
+router.get('/stats', getUserStats); // Statistics route (must be before /:id route)
+router.get('/', getUsers);
+router.get('/:id', getUser);
+router.post('/', createUser);
+router.put('/:id', updateUser);
+router.delete('/:id', deleteUser);
 
 module.exports = router;

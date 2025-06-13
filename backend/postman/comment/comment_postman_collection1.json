@@ -1,0 +1,449 @@
+{
+  "info": {
+    "name": "Comments API",
+    "description": "Comprehensive API collection for Comments system with authentication, CRUD operations, likes, and replies",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "commentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "parentCommentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"confirmPassword\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', responseJson.token);",
+                  "    pm.collectionVariables.set('userId', responseJson.user._id);",
+                  "    console.log('Auth token saved:', responseJson.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Posts Setup",
+      "item": [
+        {
+          "name": "Create Test Post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('postId', responseJson.data._id);",
+                  "    console.log('Post ID saved:', responseJson.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test Post for Comments\",\n  \"content\": \"This is a test post where we will add comments for testing purposes.\",\n  \"tags\": [\"test\", \"comments\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "item": [
+        {
+          "name": "Create Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('commentId', responseJson.data._id);",
+                  "    console.log('Comment ID saved:', responseJson.data._id);",
+                  "",
+                  "    pm.test('Comment created successfully', function () {",
+                  "        pm.expect(responseJson.success).to.be.true;",
+                  "        pm.expect(responseJson.data.content).to.eql('This is my first comment on this post!');",
+                  "        pm.expect(responseJson.data.author).to.eql(pm.collectionVariables.get('userId'));",
+                  "        pm.expect(responseJson.data.post).to.eql(pm.collectionVariables.get('postId'));",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is my first comment on this post!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comments/v1/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "v1", "posts", "{{postId}}", "comments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Reply Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.test('Reply created successfully', function () {",
+                  "        pm.expect(responseJson.success).to.be.true;",
+                  "        pm.expect(responseJson.data.parentComment).to.eql(pm.collectionVariables.get('commentId'));",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is a reply to the first comment!\",\n  \"parentComment\": \"{{commentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comments/v1/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "v1", "posts", "{{postId}}", "comments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Post Comments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comments retrieved successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "    pm.expect(responseJson.data).to.be.an('array');",
+                  "    pm.expect(responseJson.data.length).to.be.greaterThan(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comments/v1/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "v1", "posts", "{{postId}}", "comments"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "newest",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Comment Replies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Replies retrieved successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "    pm.expect(responseJson.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comments/v1/comments/{{commentId}}/replies",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "v1", "comments", "{{commentId}}", "replies"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comment updated successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "    pm.expect(responseJson.data.content).to.eql('This is my updated comment content!');",
+                  "    pm.expect(responseJson.data.isEdited).to.be.true;",
+                  "    pm.expect(responseJson.data.editedAt).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"This is my updated comment content!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comments/v1/comments/{{commentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "v1", "comments", "{{commentId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Like Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comment liked successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comments/v1/comments/{{commentId}}/like",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "v1", "comments", "{{commentId}}", "like"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unlike Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Comment unliked successfully', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comments/v1/comments/{{commentId}}/like",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", "v1", "comments", "{{commentId}}", "like"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Scenarios",
+      "item": [
+        {
+          "name": "Create Comment - Invalid Content",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Validation error for empty content', function () {",
+                  "    pm.expect(pm.response.code).to.be,

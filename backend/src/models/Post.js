@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-const postSchema = new Schema(
+const postSchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -18,7 +17,7 @@ const postSchema = new Schema(
       trim: true,
     },
     author: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Post author is required'],
     },
@@ -44,7 +43,7 @@ const postSchema = new Schema(
     likes: [
       {
         user: {
-          type: Schema.Types.ObjectId,
+          type: mongoose.Schema.Types.ObjectId,
           ref: 'User',
         },
         likedAt: {
@@ -56,7 +55,7 @@ const postSchema = new Schema(
     comments: [
       {
         user: {
-          type: Schema.Types.ObjectId,
+          type: mongoose.Schema.Types.ObjectId,
           ref: 'User',
           required: true,
         },
@@ -118,6 +117,14 @@ postSchema.virtual('engagementScore').get(function () {
   return this.likeCount + this.commentCount + this.views;
 });
 
+// Virtual for external comments
+postSchema.virtual('externalComments', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'post',
+  match: { parentComment: null },
+});
+
 // Index for better query performance
 postSchema.index({ author: 1, createdAt: -1 });
 postSchema.index({ category: 1, publishedAt: -1 });
@@ -169,6 +176,24 @@ postSchema.methods.addComment = function (userId, content) {
     content: content,
   });
   return this.save();
+};
+
+// Method to migrate embedded comments to external Comment model
+postSchema.methods.migrateCommentsToExternal = async function () {
+  const Comment = require('./Comment');
+
+  for (const comment of this.comments) {
+    await Comment.create({
+      content: comment.content,
+      author: comment.user,
+      post: this._id,
+      createdAt: comment.createdAt,
+    });
+  }
+
+  // Clear embedded comments after migration (optional)
+  // this.comments = [];
+  // await this.save();
 };
 
 module.exports = mongoose.model('Post', postSchema);

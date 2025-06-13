@@ -1,6 +1,16 @@
 const express = require('express');
-const PostController = require('../controllers/postController');
-const { protect } = require('../middleware/auth'); // Assuming you have this from Day 3
+const {
+  getAllPosts,
+  getPostById,
+  getMyPosts,
+  createPost,
+  updatePost,
+  deletePost,
+  likePost,
+  addComment,
+  getPostLikes,
+} = require('../controllers/postController');
+const { protect } = require('../middleware/auth');
 const {
   createPostValidation,
   updatePostValidation,
@@ -9,17 +19,18 @@ const {
 const router = express.Router();
 
 // Public routes
-router.get('/', PostController.getAllPosts);
-router.get('/:id', PostController.getPostById);
+router.get('/', getAllPosts);
+router.get('/:id', getPostById);
+router.get('/:id/likes', getPostLikes);
 
-// Protected routes (require authentication)
-router.use(protect); // Apply auth middleware to all routes below
+// Protected routes
+router.use(protect); // All routes after this are protected
 
-router.get('/user/my-posts', PostController.getMyPosts);
-router.post('/', createPostValidation, PostController.createPost);
-router.put('/:id', updatePostValidation, PostController.updatePost);
-router.delete('/:id', PostController.deletePost);
-router.post('/:id/like', PostController.likePost);
-router.post('/:id/comment', PostController.addComment);
+router.get('/user/my-posts', getMyPosts);
+router.post('/', createPostValidation, createPost);
+router.put('/:id', updatePostValidation, updatePost);
+router.delete('/:id', deletePost);
+router.post('/:id/like', likePost);
+router.post('/:id/comment', addComment);
 
 module.exports = router;

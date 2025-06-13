@@ -467,6 +467,67 @@ class PostController {
       });
     }
   }
+
+  // @desc    Get users who liked a post
+  // @route   GET /api/v1/posts/:id/likes
+  // @access  Public
+  static async getPostLikes(req, res) {
+    try {
+      const { page = 1, limit = 20 } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const post = await Post.findById(req.params.id).populate({
+        path: 'likes.user',
+        select: 'username email profile.avatar',
+        options: {
+          sort: { 'likes.likedAt': -1 },
+        },
+      });
+
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          error: 'Post not found',
+          message: `Post with ID ${req.params.id} does not exist`,
+        });
+      }
+
+      // Paginate the likes array
+      const totalLikes = post.likes.length;
+      const paginatedLikes = post.likes.slice(skip, skip + parseInt(limit));
+      const totalPages = Math.ceil(totalLikes / parseInt(limit));
+
+      res.status(200).json({
+        success: true,
+        data: {
+          likes: paginatedLikes,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages,
+            totalLikes,
+            hasNextPage: parseInt(page) < totalPages,
+            hasPrevPage: parseInt(page) > 1,
+            limit: parseInt(limit),
+          },
+        },
+        message: `Retrieved ${paginatedLikes.length} likes successfully`,
+      });
+    } catch (error) {
+      if (error.name === 'CastError') {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid Post ID',
+          message: 'Please provide a valid post ID',
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Server Error',
+        message: error.message,
+      });
+    }
+  }
 }
 
 module.exports = PostController;

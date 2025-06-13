@@ -16,6 +16,7 @@ const notFound = require('./middleware/notFound');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const postRoutes = require('./routes/post');
+const commentRoutes = require('./routes/comment');
 
 const app = express();
 
@@ -183,6 +184,7 @@ app.get('/', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/posts', postRoutes);
+app.use('/api/v1/comments', commentRoutes);
 
 // Error handling middleware
 // Handle 404 errors
